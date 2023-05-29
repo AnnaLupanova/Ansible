@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Checkout') { // добавим новый Stage
             steps {
-                git branch: 'main', url: "git@github.com:AnnaLupanova/Ansible.git", credentialsId: 'github_key' // используем встроенный в Jenkins плагин Git для скачивания проекта из бранча main
+                git branch: 'main', url: "git@github.com:AnnaLupanova/Ansible.git", credentialsId: 'git_key' // используем встроенный в Jenkins плагин Git для скачивания проекта из бранча main
             }
         }
         stage('Deploy') {
