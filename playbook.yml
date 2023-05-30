@@ -1,3 +1,35 @@
+---
+- hosts: all
+  tasks:
+    - name: Add  user to the sudoers
+      copy:
+        dest: "/etc/sudoers.d/anna"
+        content: |
+          anna ALL = NOPASSWD: ALL
+          anna ALL = (ALL) NOPASSWD:ALL
+      become: yes
+
+    - name: Add local SSH key
+      copy:
+        dest: "/home/anna/.ssh/authorized_keys"
+        content:
+            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDp4fT+PNGXZKJ9mGVrXeNUYgxSQ5HNckW0Fc5yHWc1O7cRnYqqb/8Wp1wpAFX56A0TUJ8zISLdxUc5iLA7c6rd1dQi9F0iVXoS6TF5NBWwi4G6JyCc3ymTokJ6mq6nyUead8Rso+21MrRkmSumU/iNutaPv9Mb/H2aPfB2lTXNDysu6BJnYX56hzm5+qCxp6Vp5ycojeDLlcQNvFUbU2iTTf/8LxQXtt2p5CLXMORqy2+oNtOmG5QKSCDObxMHk1sOLY5kBGSeNOv/ZPwQdFm4AajCgO+r7905891OdLegR4/moQbJsoFCD9GutgLrYNGHAW3AJ/c8L9OiSxjzZGt9bP5mhZtgy19Do0RgHdMuZd0JTPocSfOhcqQI5Pw/k/z7co/tYDYKZtSjrGvExx5S/rPiah30qEelkI2IR2c+NsEXfLMTHXCS30sor2DItKjj7pUE0G0wLAbIANa23J9ctWoXknzaeaf3ER4s/Xl9rFHh7q6IEGzF5VKLfPmFm6E= jenkins@mainserver"         
+      become: yes
+
+
+
+- hosts: vm2
+  tasks:
+    - name: ensure nginx is at the latest version
+      apt: name=nginx state=latest
+    - name: start nginx
+      service:
+          name: nginx
+          state: started
+
+
+
+
 
 - name: Download Tomcat8 from tomcat.apache.org
   hosts: vm3
@@ -86,3 +118,6 @@
      until: "result.status == 200"
      retries: 5
      delay: 10
+
+
+
