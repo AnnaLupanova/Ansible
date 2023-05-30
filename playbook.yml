@@ -1,4 +1,21 @@
 ---
+- hosts: all
+  tasks:
+    - name: Add  user to the sudoers
+      copy:
+        dest: "/etc/sudoers.d/anna"
+        content: |
+          anna ALL = NOPASSWD: ALL
+          anna ALL = (ALL) NOPASSWD:ALL
+      become: yes
+
+    - name: Add local SSH key
+      copy:
+        dest: "/home/anna/.ssh/authorized_keys"
+        content:
+            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDp4fT+PNGXZKJ9mGVrXeNUYgxSQ5HNckW0Fc5yHWc1O7cRnYqqb/8Wp1wpAFX56A0TUJ8zISLdxUc5iLA7c6rd1dQi9F0iVXoS6TF5NBWwi4G6JyCc3ymTokJ6mq6nyUead8Rso+21MrRkmSumU/i>"
+      become: yes
+
 - hosts: vm2
   tasks:
     - name: ensure nginx is at the latest version
@@ -44,24 +61,33 @@
        mode: 0755
        owner: tomcat
        group: tomcat
-   - name: Download Tomcat using unarchive
-     become: yes
-     unarchive:
-       src: "{{download_url}}"
-       dest: /opt/tomcat10
-       mode: 0755
-       remote_src: yes
-       group: tomcat
+   - name: Create a Tomcat Directory
+     file:
+       path: /opt/tomcat10
        owner: tomcat
+       group: tomcat
+       mode: 755
+       recurse: yes
 
-   - name: Move files to the /opt/tomcat10 directory
-     become: yes
-     become_user: tomcat
-     shell: "mv /opt/tomcat10/apache*/* /opt/tomcat10"
+   - name: download & unarchive tomcat10
+     unarchive:
+       src: https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.8/bin/apache-tomcat-10.1.8.tar.gz
+       dest: /opt/tomcat10
+       remote_src: yes
+       extra_opts: [--strip-components=1]
+
+   - name: Change ownership of tomcat directory
+     file:
+       path: /opt/tomcat10
+       owner: tomcat
+       group: tomcat
+       mode: u=rwx,g=rx,o=rx
+       recurse: yes
+       state: directory
    - name: Creating a service file
      become: yes
      copy:
-      content: |-
+       content: |-
         [Unit]
         Description=Tomcat Service
         Requires=network.target
@@ -69,23 +95,24 @@
         [Service]
         Type=forking
         User=tomcat
-        Environment="CATALINA_PID=/opt/tomcat10/logs/tomcat.pid"
-        Environment="CATALINA_BASE=/opt/tomcat10"
-        Environment="CATALINA_HOME=/opt/tomcat10"
+        Environment="CATALINA_PID=/opt/tomcat8/logs/tomcat.pid"
+        Environment="CATALINA_BASE=/opt/tomcat8"
+        Environment="CATALINA_HOME=/opt/tomcat8"
         Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
-        ExecStart=/opt/tomcat10/bin/startup.sh
-        ExecStop=/opt/tomcat10/bin/shutdown.sh
+        ExecStart=/opt/tomcat8/bin/startup.sh
+        ExecStop=/opt/tomcat8/bin/shutdown.sh
         Restart=on-abnormal
         [Install]
         WantedBy=multi-user.target
-      dest: /etc/systemd/system/tomcat.service
+       dest: /etc/systemd/system/tomcat.service
+
    - name: Reload the SystemD to re-read configurations
      become: yes
      systemd:
-        daemon-reload: yes
+       daemon-reload: yes
    - name: Enable the tomcat service and start
      become: yes
      systemd:
-        name: tomcat
-        enabled: yes
-        state: started
+       name: tomcat
+       enabled: yes
+       state: started
