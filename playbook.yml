@@ -13,7 +13,7 @@
       copy:
         dest: "/home/anna/.ssh/authorized_keys"
         content:
-            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDp4fT+PNGXZKJ9mGVrXeNUYgxSQ5HNckW0Fc5yHWc1O7cRnYqqb/8Wp1wpAFX56A0TUJ8zISLdxUc5iLA7c6rd1dQi9F0iVXoS6TF5NBWwi4G6JyCc3ymTokJ6mq6nyUead8Rso+21MrRkmSumU/iNutaPv9Mb/H2aPfB2lTXNDysu6BJnYX56hzm5+qCxp6Vp5ycojeDLlcQNvFUbU2iTTf/8LxQXtt2p5CLXMORqy2+oNtOmG5QKSCDObxMHk1sOLY5kBGSeNOv/ZPwQdFm4AajCgO+r7905891OdLegR4/moQbJsoFCD9GutgLrYNGHAW3AJ/c8L9OiSxjzZGt9bP5mhZtgy19Do0RgHdMuZd0JTPocSfOhcqQI5Pw/k/z7co/tYDYKZtSjrGvExx5S/rPiah30qEelkI2IR2c+NsEXfLMTHXCS30sor2DItKjj7pUE0G0wLAbIANa23J9ctWoXknzaeaf3ER4s/Xl9rFHh7q6IEGzF5VKLfPmFm6E= jenkins@mainserver"         
+            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDp4fT+PNGXZKJ9mGVrXeNUYgxSQ5HNckW0Fc5yHWc1O7cRnYqqb/8Wp1wpAFX56A0TUJ8zISLdxUc5iLA7c6rd1dQi9F0iVXoS6TF5NBWwi4G6JyCc3ymTokJ6mq6nyUead8Rso+21MrRkmSumU/i>
       become: yes
 
 
@@ -21,68 +21,65 @@
 - hosts: vm2
   tasks:
     - name: ensure nginx is at the latest version
-      apt: name=nginx state=latest
+      apt:
+        name: nginx
+        state: latest
     - name: start nginx
       service:
-          name: nginx
-          state: started
+        name: nginx
+        state: started
+        enabled: yes
 
 
 
 
 
-- name: Download Tomcat8 from tomcat.apache.org
-  hosts: vm3
-  vars:
-    download_url: https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.83/bin/apache-tomcat-8.5.83.tar.gz
+
+- hosts: vm3
+
   tasks:
-   - name: Download Open JDK
-     become: yes
-     apt:
-      name: openjdk-8-jre-headless
-      update_cache: yes
-      state: present
-  
-   - name: validate if Java is availble 
-     shell: 
-      java -version
-     
-   - name: Create the group
-     become: yes
-     group: 
-      name: tomcat
-      state: present
-   - name: Create the user
-     become: yes
-     user:
+    - name: Create a Tomcat User
+      user:
         name: tomcat
+ 
+    - name: Create a Tomcat Group
+      group:
+        name: tomcat
+ 
+    - name: Install JAVA
+      apt:
+        name: default-jdk
         state: present
-   - name: Create a Directory /opt/tomcat8
-     become: yes
-     file:
-       path: /opt/tomcat8
-       state: directory
-       mode: 0755
-       owner: tomcat
-       group: tomcat
-   - name: Download Tomcat using unarchive
-     become: yes
-     unarchive:
-       src: "{{download_url}}"
-       dest: /opt/tomcat8
-       mode: 0755
-       remote_src: yes
-       group: tomcat
-       owner: tomcat
-    
-   - name: Move files to the /opt/tomcat8 directory
-     become: yes
-     become_user: tomcat
-     shell: "mv /opt/tomcat8/apache*/* /opt/tomcat8"
-   - name: Creating a service file
-     become: yes
-     copy: 
-      content: |-
+ 
+ 
+    - name: Create a Tomcat Directory
+      file:
+        path: /opt/tomcat10
+        owner: tomcat
+        group: tomcat
+        mode: 755
+        recurse: yes
+ 
+    - name: download & unarchive tomcat10 
+      unarchive:
+        src: https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.8/bin/apache-tomcat-10.1.8.tar.gz
+        dest: /opt/tomcat10
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+ 
+    - name: Change ownership of tomcat directory
+      file:
+        path: /opt/tomcat10
+        owner: tomcat
+        group: tomcat
+        mode: "u+rwx,g+rx,o=rx"
+        recurse: yes
+        state: directory
+ 
+    - name: Creating a service file
+      become: yes
+      copy: 
+       content: |-
         [Unit]
         Description=Tomcat Service
         Requires=network.target
@@ -90,34 +87,24 @@
         [Service]
         Type=forking
         User=tomcat
-        Environment="CATALINA_PID=/opt/tomcat8/logs/tomcat.pid"
-        Environment="CATALINA_BASE=/opt/tomcat8"
-        Environment="CATALINA_HOME=/opt/tomcat8"
+        Environment="CATALINA_PID=/opt/tomcat10/logs/tomcat.pid"
+        Environment="CATALINA_BASE=/opt/tomcat10"
+        Environment="CATALINA_HOME=/opt/tomcat10"
         Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
-        ExecStart=/opt/tomcat8/bin/startup.sh
-        ExecStop=/opt/tomcat8/bin/shutdown.sh
+        ExecStart=/opt/tomcat10/bin/startup.sh
+        ExecStop=/opt/tomcat10/bin/shutdown.sh
         Restart=on-abnormal
         [Install]
         WantedBy=multi-user.target
-      dest: /etc/systemd/system/tomcat.service
-   - name: Reload the SystemD to re-read configurations
-     become: yes
-     systemd:
-        daemon-reload: yes
-   - name: Enable the tomcat service and start
-     become: yes
-     systemd:
+       dest: /etc/systemd/system/tomcat.service
+    - name: Reload the SystemD to re-read configurations
+      become: yes
+      systemd:
+         daemon-reload: yes
+    - name: Enable the tomcat service and start
+      become: yes
+      systemd:
         name: tomcat
         enabled: yes
         state: started
-   - name: Connect to Tomcat server on port 8080 and check status 200 - Try 5 times
-     tags: test
-     uri:
-       url: http://localhost:8080
-     register: result
-     until: "result.status == 200"
-     retries: 5
-     delay: 10
-
-
-
+    
