@@ -29,9 +29,10 @@
         enabled: yes
 
     - name: Move file nginx assets
+      become: yes
       ansible.builtin.copy:
        src: /root/Ansible/assets
-       dest: /var/www/html/assets
+       dest: /var/www/html
        mode: u=rwx,g=rx,o=rx
 
     - name: Move file nginx index
