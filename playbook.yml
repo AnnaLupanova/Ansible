@@ -28,6 +28,20 @@
         state: started
         enabled: yes
 
+    - name: Move file nginx assets
+      ansible.builtin.copy:
+       src: /root/Ansible/assets
+       dest: /var/www/html/assets
+       mode: u=rwx,g=rx,o=rx
+
+    - name: Move file nginx index
+      ansible.builtin.copy:
+       src: /root/Ansible/index.html
+       dest: /var/www/html/index.html
+       mode: u=rwx,g=rx,o=rx
+    - name: restart nginx
+      service: name=nginx state=restarted enabled=yes
+
 - hosts: vm3
   vars:
     download_url: https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.8/bin/apache-tomcat-10.1.8.tar.gz
@@ -116,3 +130,10 @@
        name: tomcat
        enabled: yes
        state: started
+   - name: Move file
+     ansible.builtin.copy:     
+       src: /root/Ansible/sample.war
+       dest: /opt/tomcat10/webapps/sample.war
+       mode: u=rwx,g=rx,o=rx
+   - name: restart tomcat
+     service: name=tomcat state=restarted enabled=yes
