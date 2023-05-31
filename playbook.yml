@@ -31,13 +31,13 @@
     - name: Move file nginx assets
       become: yes
       ansible.builtin.copy:
-       src: /root/Ansible/assets
+       src: /home/anna/assets
        dest: /var/www/html
        mode: u=rwx,g=rx,o=rx
 
     - name: Move file nginx index
       ansible.builtin.copy:
-       src: /root/Ansible/index.html
+       src: /home/anna/index.html
        dest: /var/www/html/index.html
        mode: u=rwx,g=rx,o=rx
     - name: restart nginx
